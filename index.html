@@ -1,0 +1,912 @@
+<!doctype html>
+<html lang="ar">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SALMAN KHAN ATK</title>
+
+  <!-- Bootstrap CSS & JS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- SheetJS for Excel handling -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <style>
+    :root{
+      --bg-1: #071026;
+      --bg-2: #071827;
+      --glass-border: rgba(255,255,255,0.06);
+      --muted: rgba(230,238,248,0.75);
+      --accent1: #47C0CF;
+      --accent2: #3F5EFB;
+      --card-radius: 12px;
+    }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      min-height:100%;
+      font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial;
+      background: radial-gradient(900px 300px at 10% 10%, rgba(63,94,251,0.08), transparent),
+                  radial-gradient(900px 300px at 90% 90%, rgba(71,192,207,0.04), transparent),
+                  linear-gradient(180deg,var(--bg-1), var(--bg-2));
+      color: #e6eef8;
+      padding: 18px;
+    }
+
+    /* glass card */
+    .glass {
+      background: linear-gradient(135deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border: 1px solid var(--glass-border);
+      border-radius: var(--card-radius);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      box-shadow: 0 8px 30px rgba(2,6,23,0.6);
+    }
+
+    .muted { color: var(--muted); }
+    .btn-accent { 
+      background: linear-gradient(90deg,var(--accent2),var(--accent1)); 
+      border: none; 
+      color: white; 
+      font-weight: 500;
+      padding: 10px 20px;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+    }
+    .btn-accent:hover { 
+      opacity: 0.9; 
+      transform: translateY(-1px);
+      box-shadow: 0 4px 15px rgba(63,94,251,0.3);
+    }
+    
+    .btn-print {
+      background: linear-gradient(90deg, #6b7280, #9ca3af);
+      border: none;
+      color: white;
+      font-weight: 500;
+      padding: 10px 20px;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+    }
+    .btn-print:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 15px rgba(107, 114, 128, 0.3);
+    }
+
+    .form-control, .form-select {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: #e6eef8;
+      border-radius: 8px;
+    }
+    .form-control:focus, .form-select:focus {
+      background: rgba(255,255,255,0.08);
+      border-color: var(--accent1);
+      color: #e6eef8;
+      box-shadow: 0 0 0 2px rgba(71,192,207,0.2);
+    }
+    .form-label {
+      color: var(--muted);
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+
+    .table {
+      --bs-table-bg: transparent;
+      --bs-table-color: #e8f6ff;
+      --bs-table-border-color: rgba(255,255,255,0.1);
+    }
+    .table thead th { 
+      color: #cfe8ff; 
+      font-weight:600; 
+      font-size:0.9rem; 
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.03);
+    }
+    .table td { 
+      vertical-align: middle; 
+      color: #e8f6ff; 
+      font-size:0.95rem; 
+      border-color: rgba(255,255,255,0.05);
+    }
+    .table tbody tr:hover {
+      background: rgba(255,255,255,0.03);
+    }
+
+    /* Center align for all columns except الماده الاسم */
+    .table th:nth-child(1),
+    .table th:nth-child(2),
+    .table th:nth-child(3),
+    .table th:nth-child(4),
+    .table th:nth-child(5),
+    .table th:nth-child(6),
+    .table th:nth-child(7),
+    .table td:nth-child(1),
+    .table td:nth-child(2),
+    .table td:nth-child(3),
+    .table td:nth-child(4),
+    .table td:nth-child(5),
+    .table td:nth-child(6),
+    .table td:nth-child(7) {
+      text-align: center;
+    }
+
+    /* Prevent text wrapping for الرف (3rd column) and الماده الاسم (8th column) */
+    .table td:nth-child(3),
+    .table td:nth-child(8) {
+      white-space: nowrap;
+      overflow: visible;
+      text-overflow: unset;
+    }
+
+    /* Right align for الماده الاسم column */
+    .table th:nth-child(8),
+    .table td:nth-child(8) {
+      text-align: right;
+      direction: rtl;
+    }
+
+    .small-muted { font-size:0.88rem; color: var(--muted); }
+
+    .status-message {
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.05);
+    }
+    .status-success {
+      background: rgba(34,197,94,0.1);
+      border-color: rgba(34,197,94,0.3);
+      color: #4ade80;
+    }
+    .status-error {
+      background: rgba(239,68,68,0.1);
+      border-color: rgba(239,68,68,0.3);
+      color: #f87171;
+    }
+    .status-info {
+      background: rgba(59,130,246,0.1);
+      border-color: rgba(59,130,246,0.3);
+      color: #60a5fa;
+    }
+
+    #tableTitle {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #e6eef8;
+      margin-bottom: 20px;
+      text-align: center;
+      direction: rtl;
+      background: linear-gradient(135deg, #e6eef8, #47C0CF);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .file-upload-section {
+      padding: 25px;
+      margin-bottom: 25px;
+    }
+
+    .table-responsive {
+      border-radius: var(--card-radius);
+      overflow-x: auto;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+      justify-content: flex-end;
+    }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(255,255,255,0.05);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.2);
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255,255,255,0.3);
+    }
+
+    /* Print Styles */
+    @media print {
+      body {
+        background: white !important;
+        color: black !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        font-size: 12px !important;
+        height: 100vh;
+      }
+
+      .file-upload-section,
+      .status-message,
+      .action-buttons,
+      .btn-accent,
+      .btn-print {
+        display: none !important;
+      }
+
+      .container {
+        padding: 0 !important;
+        margin: 0 !important;
+        max-width: none !important;
+        width: 100% !important;
+        height: 100%;
+      }
+
+      .glass {
+        background: white !important;
+        box-shadow: none !important;
+        border: none !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        border-radius: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        height: 100%;
+      }
+
+      #tableTitle {
+        color: black !important;
+        background: none !important;
+        -webkit-text-fill-color: black !important;
+        margin-bottom: 10px !important;
+        font-size: 16px !important;
+        padding: 0 !important;
+      }
+
+      .table-responsive {
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+      }
+
+      .table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        margin: 0 auto !important;
+        font-size: 10px !important;
+        page-break-inside: auto;
+      }
+
+      .table th, .table td {
+        color: black !important;
+        border: 1px solid #000000 !important;
+        padding: 4px 6px !important;
+        page-break-inside: avoid;
+        page-break-after: auto;
+      }
+
+      .table thead th {
+        background: #f8f9fa !important;
+        font-weight: 600 !important;
+        page-break-after: avoid;
+      }
+
+      .table tbody tr {
+        page-break-inside: avoid;
+        page-break-after: auto;
+      }
+
+      /* Center most columns except Arabic name */
+      .table th:nth-child(1),
+      .table th:nth-child(2),
+      .table th:nth-child(3),
+      .table th:nth-child(4),
+      .table th:nth-child(5),
+      .table th:nth-child(6),
+      .table th:nth-child(7),
+      .table td:nth-child(1),
+      .table td:nth-child(2),
+      .table td:nth-child(3),
+      .table td:nth-child(4),
+      .table td:nth-child(5),
+      .table td:nth-child(6),
+      .table td:nth-child(7) {
+        text-align: center !important;
+      }
+
+      .table th:nth-child(8),
+      .table td:nth-child(8) {
+        text-align: right !important;
+        direction: rtl !important;
+        white-space: nowrap !important;
+   
+      }
+
+      /* Print page container with proper page breaks and vertical centering */
+      .print-page {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        page-break-after: always;
+        width: 100%;
+        margin: 0;
+        padding: 10mm;
+        box-sizing: border-box;
+      }
+
+      .print-page:last-child {
+        page-break-after: auto !important;
+      }
+
+      .print-table-title {
+        font-size: 16px !important;
+        font-weight: 700 !important;
+        color: black !important;
+        text-align: center !important;
+        direction: rtl !important;
+        margin-bottom: 12px !important;
+        width: 100%;
+        page-break-after: avoid;
+      }
+
+      .page-info {
+        position: absolute;
+        top: 5mm;
+        right: 5mm;
+        font-size: 10px !important;
+        color: #666 !important;
+      }
+
+      /* Ensure tables break properly */
+      table {
+        page-break-inside: auto;
+      }
+
+      tr {
+        page-break-inside: avoid;
+        page-break-after: auto;
+      }
+
+      thead {
+        display: table-header-group;
+      }
+
+      tfoot {
+        display: table-footer-group;
+      }
+
+      .notavailable {
+        display: none !important;
+      }
+
+      @page {
+        size: A4 portrait;
+        margin-left: -2px;
+        margin-right: 5mm !important;
+      }
+    }
+
+    @media (min-width: 992px) {
+      .split { display:grid; grid-template-columns:420px 1fr; gap:18px; align-items:start; }
+    }
+    @media (max-width:991px) {
+      .split { display:block; }
+      .table-responsive { max-height: 360px !important; }
+      .action-buttons {
+        justify-content: center;
+      }
+    }
+      #loader {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: url("Gemini_Generated_Image_k06eyrk06eyrk06e.png") center  ;
+      background-size: cover;   /* makes image cover entire screen */
+      z-index: 9999;
+    }
+       /* Optional: fade out smoothly */
+    .fade-out {
+      opacity: 0;
+      transition: opacity 1s ease;
+    }
+
+    #howToUseBtn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #47C0CF, #3F5EFB);
+  color: white;
+  font-size: 1.4rem;
+  font-weight: bold;
+  text-align: center;
+  line-height: 45px;
+  text-decoration: none;
+  z-index: 9999;
+  box-shadow: 0 0 15px rgba(63,94,251,0.6), 0 0 30px rgba(71,192,207,0.5);
+  transition: all 0.3s ease, box-shadow 0.6s ease-in-out;
+  display: inline-block;
+  cursor: pointer;
+  animation: pulse 2s infinite;
+}
+
+#howToUseBtn:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 20px rgba(63,94,251,0.8), 0 0 40px rgba(71,192,207,0.7);
+}
+
+/* Pulse animation */
+@keyframes pulse {
+  0% { box-shadow: 0 0 15px rgba(63,94,251,0.6), 0 0 30px rgba(71,192,207,0.5); }
+  50% { box-shadow: 0 0 20px rgba(63,94,251,0.8), 0 0 40px rgba(71,192,207,0.7); }
+  100% { box-shadow: 0 0 15px rgba(63,94,251,0.6), 0 0 30px rgba(71,192,207,0.5); }
+}
+
+/* Hide in print mode */
+@media print {
+  #howToUseBtn {
+    display: none !important;
+  }
+}
+
+  </style>
+</head>
+<body>
+  
+  <!-- Fullscreen Loader -->
+  <div id="loader"></div>
+  <!-- Floating How-to-Use Button -->
+<a href="how-to-use.html" id="howToUseBtn" title="How to Use">
+  ?
+</a>
+
+  <div class="container">
+    <div class="glass file-upload-section">
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label for="fileInput" class="form-label">Upload order Excel file (.xlsx)</label>
+          <input id="fileInput" type="file" accept=".xlsx,.xls" class="form-control" />
+        </div>
+        <div class="col-md-6 mb-3">
+          <label for="shelfFileInput" class="form-label">Upload Shelf Location Excel file (.xlsx)</label>
+          <input id="shelfFileInput" type="file" accept=".xlsx,.xls" class="form-control" />
+        </div>
+      </div>
+      
+      <div id="statusMessage" class="status-message mt-3 p-3 d-none"></div>
+      
+      <div class="action-buttons">
+        <button class="btn btn-accent" onclick="printTable()">
+          Print Table
+        </button>
+      </div>
+    </div>
+
+    <h3 id="tableTitle" class="notavailable" dir="rtl">عنوان الجدول</h3>
+    
+    <div class="glass">
+      <div class="table-responsive" id="tableContainer">
+        <!-- Tables will be dynamically created here with print-page containers -->
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const shelfFileInput = document.getElementById('shelfFileInput');
+    const tableTitle = document.getElementById('tableTitle');
+    const tableContainer = document.getElementById('tableContainer');
+    const statusMessage = document.getElementById('statusMessage');
+
+    let sheetData = [];
+    let shelfMapping = {};
+
+    function showStatus(message, type = 'info') {
+      statusMessage.textContent = message;
+      statusMessage.className = `status-message mt-3 p-3 status-${type}`;
+      statusMessage.classList.remove('d-none');
+    }
+
+    function clearStatus() {
+      statusMessage.classList.add('d-none');
+    }
+
+    function printTable() {
+      window.print();
+    }
+
+    function readShelfFile(file) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const data = new Uint8Array(ev.target.result);
+          const wb = XLSX.read(data, { type: 'array' });
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          
+          // Convert to JSON to see the actual structure
+          const jsonData = XLSX.utils.sheet_to_json(ws, { header: 1 });
+          
+          // Reset shelf mapping
+          shelfMapping = {};
+          let validBarcodes = 0;
+
+          // Process each row starting from row 2 (skip header)
+          for (let r = 1; r < jsonData.length; r++) {
+            const row = jsonData[r];
+            if (!row || row.length < 5) continue;
+
+            // Column B (index 1) should contain barcodes
+            const barcode = row[1] ? String(row[1]).trim() : '';
+            
+            // Columns C, D, E (index 2, 3, 4) contain shelf location
+            // Handle zero values properly
+            const line = row[2] !== undefined && row[2] !== null ? String(row[2]).trim() : '';
+            const stand = row[3] !== undefined && row[3] !== null ? String(row[3]).trim() : '';
+            const shelfNum = row[4] !== undefined && row[4] !== null ? String(row[4]).trim() : '';
+            
+            // Build shelf location - include zero values
+            const shelfLocation = `${line}-${stand}-${shelfNum}`;
+
+            if (barcode && barcode !== '' && barcode !== '0') {
+              shelfMapping[barcode] = shelfLocation;
+              validBarcodes++;
+            }
+          }
+
+          showStatus(`Shelf file loaded. Found ${validBarcodes} barcode mappings.`, 'success');
+
+          if (sheetData.length > 0) {
+            updateShelfLocations();
+          }
+        } catch(err) {
+          console.error('Failed to read shelf file:', err);
+          showStatus('Failed to read shelf file: ' + err.message, 'error');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    // Fixed sorting function for shelf locations - natural sort
+    function sortShelfLocations(a, b) {
+      const shelfA = a['الرف'] || '';
+      const shelfB = b['الرف'] || '';
+
+      // Handle N/A values - put them at the end
+      if (shelfA === 'N/A' && shelfB === 'N/A') return 0;
+      if (shelfA === 'N/A') return 1;
+      if (shelfB === 'N/A') return -1;
+
+      // Natural sort comparison for shelf locations
+      return naturalCompare(shelfA, shelfB);
+    }
+
+    // Natural sort comparison function
+    function naturalCompare(a, b) {
+      const ax = [], bx = [];
+
+      // Split into segments (numbers and non-numbers)
+      a.replace(/(\d+)|(\D+)/g, function(_, $1, $2) {
+        ax.push([$1 || Infinity, $2 || ""]);
+      });
+      b.replace(/(\d+)|(\D+)/g, function(_, $1, $2) {
+        bx.push([$1 || Infinity, $2 || ""]);
+      });
+      
+      while (ax.length && bx.length) {
+        const an = ax.shift();
+        const bn = bx.shift();
+        const nn = (an[0] - bn[0]) || an[1].localeCompare(bn[1]);
+        if (nn) return nn;
+      }
+      
+      return ax.length - bx.length;
+    }
+
+    function updateShelfLocations() {
+      let updatedCount = 0;
+      let notFoundCount = 0;
+      
+      sheetData.forEach(row => {
+        const barcode = row['الرمز الخطي'];
+        if (barcode) {
+          if (shelfMapping[barcode]) {
+            row['الرف'] = shelfMapping[barcode];
+            updatedCount++;
+          } else {
+            // Set to "N/A" if barcode not found in shelf file
+            row['الرف'] = 'N/A';
+            notFoundCount++;
+          }
+        }
+      });
+      
+      // Sort the data by shelf location using natural sort
+      sheetData.sort(sortShelfLocations);
+      
+      renderTable();
+      showStatus(`Updated shelf locations for ${updatedCount} items. ${notFoundCount} items set to N/A. Sorted by shelf location.`, 'success');
+    }
+
+    function renderTable(){
+      tableContainer.innerHTML = '';
+      
+      if (sheetData.length === 0) {
+        const emptyDiv = document.createElement('div');
+        emptyDiv.className = 'text-center muted p-4';
+        emptyDiv.textContent = 'No data available';
+        tableContainer.appendChild(emptyDiv);
+        return;
+      }
+      
+      // First, identify all the groups and their first numbers
+      const groups = [];
+      let currentGroup = null;
+      
+      sheetData.forEach((row) => {
+        const shelf = row['الرف'] || '';
+        let firstNumber = null;
+        
+        if (shelf !== 'N/A') {
+          const match = shelf.match(/^(\d+)/);
+          if (match) {
+            firstNumber = parseInt(match[1], 10);
+          }
+        }
+        
+        if (currentGroup === null || firstNumber !== currentGroup.firstNumber) {
+          // Start a new group
+          if (currentGroup !== null) {
+            groups.push(currentGroup);
+          }
+          currentGroup = {
+            firstNumber: firstNumber,
+            rows: [row]
+          };
+        } else {
+          // Add to current group
+          currentGroup.rows.push(row);
+        }
+      });
+      
+      // Don't forget the last group
+      if (currentGroup !== null) {
+        groups.push(currentGroup);
+      }
+      
+      // Create a map of all existing first numbers for quick lookup
+      const existingNumbers = new Set();
+      groups.forEach(group => {
+        if (group.firstNumber !== null) {
+          existingNumbers.add(group.firstNumber);
+        }
+      });
+      
+      // Now group the groups into pairs for printing
+      let currentPair = [];
+      const pairs = [];
+      
+      groups.forEach((group, groupIndex) => {
+        currentPair.push(group);
+        
+        // Check if we should break after this group
+        if (group.firstNumber !== null && groupIndex < groups.length - 1) {
+          const nextEven = group.firstNumber + (group.firstNumber % 2 === 0 ? 2 : 1);
+          
+          // If this is an even group, always break
+          // OR if this is an odd group and the next even number doesn't exist
+          if (group.firstNumber % 2 === 0 || !existingNumbers.has(nextEven)) {
+            pairs.push(currentPair);
+            currentPair = [];
+          }
+        } else if (groupIndex === groups.length - 1) {
+          // Last group, add the current pair
+          pairs.push(currentPair);
+        }
+      });
+      
+      // Now render all pairs with proper page breaks and vertical centering
+      let rowIndex = 0;
+      let pageCounter = 1;
+      
+      pairs.forEach((pair, pairIndex) => {
+        // Calculate total rows in this pair
+        const pairRowCount = pair.reduce((total, group) => total + group.rows.length, 0);
+        
+        // If pair has more than 43 rows, split it into multiple pages
+        const maxRowsPerPage = 43;
+        const pagesNeeded = Math.ceil(pairRowCount / maxRowsPerPage);
+        
+        for (let pageNum = 0; pageNum < pagesNeeded; pageNum++) {
+          const startRow = pageNum * maxRowsPerPage;
+          const endRow = Math.min(startRow + maxRowsPerPage, pairRowCount);
+          
+          // Create a print-page container for each page
+          const printPage = document.createElement('div');
+          printPage.className = 'print-page';
+          
+          // Add page info
+          const pageInfo = document.createElement('div');
+          pageInfo.className = 'page-info';
+          pageInfo.textContent = `Page ${pageCounter}`;
+          printPage.appendChild(pageInfo);
+          pageCounter++;
+          
+          // Add table title at the top of each print page
+          const titleElement = document.createElement('h3');
+          titleElement.className = 'print-table-title';
+          titleElement.textContent = tableTitle.textContent;
+          titleElement.dir = 'rtl';
+          printPage.appendChild(titleElement);
+          
+          // Create a table for this page
+          const table = document.createElement('table');
+          table.className = 'table table-bordered table-sm mb-0';
+          
+          // Create table header
+          const thead = document.createElement('thead');
+          thead.innerHTML = `
+            <tr>
+              <th>م</th>
+              <th>الرمز الخطي</th>
+              <th>الرف</th>
+              <th>الكمية</th>
+              <th>الفعلي</th>
+              <th>الصلاحية</th>
+              <th> عربي</th>
+              <th class='namelimit'>الماده الاسم</th>
+            </tr>
+          `;
+          table.appendChild(thead);
+          
+          // Create table body
+          const tbody = document.createElement('tbody');
+          
+          // Render rows from all groups in this pair for this specific page
+          let rowsRendered = 0;
+          let currentRowInPair = 0;
+          
+          pair.forEach(group => {
+            if (rowsRendered >= maxRowsPerPage) return;
+            
+            group.rows.forEach((row, groupRowIndex) => {
+              // Skip rows before the start of this page
+              if (currentRowInPair < startRow) {
+                currentRowInPair++;
+                return;
+              }
+              
+              // Stop if we've rendered enough rows for this page
+              if (rowsRendered >= maxRowsPerPage) return;
+              
+              const tr = document.createElement('tr');
+              tr.innerHTML = `
+                <td>${rowIndex + 1}</td>
+                <td>${row['الرمز الخطي']||''}</td>
+                <td>${row['الرف']||''}</td>
+                <td>${row['الكمية']||''}</td>
+                <td>${row['الفعلي']||''}</td>
+                <td>${row['الصلاحية']||''}</td>
+                <td>${row['عربي']||''}</td>
+                <td>${row['الماده الاسم']||''}</td>
+              `;
+              tbody.appendChild(tr);
+              rowsRendered++;
+              rowIndex++;
+              currentRowInPair++;
+            });
+          });
+          
+          table.appendChild(tbody);
+          printPage.appendChild(table);
+          tableContainer.appendChild(printPage);
+        }
+      });
+    }
+
+    // Handle main file upload
+    fileInput.addEventListener('change', (e) => {
+      const f = e.target.files[0];
+      if(!f) return;
+      
+      clearStatus();
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const data = new Uint8Array(ev.target.result);
+          const wb = XLSX.read(data, { type: 'array' });
+          const ws = wb.Sheets[wb.SheetNames[0]];
+
+          // Read title
+          let b1Raw = ws["B1"] ? ws["B1"].v : "";
+          let b1 = String(b1Raw).trim();
+          const a4 = ws["A4"] ? ws["A4"].v : "";
+
+          if(a4){
+            const regex = /^(.*?رقم)\s*\S+\s*(.*)$/;
+            const match = a4.match(regex);
+            if(match){
+              tableTitle.textContent = `${match[1].trim()} ${b1} ${match[2].trim()}`;
+            } else {
+              tableTitle.textContent = a4;
+            }
+          }
+
+          // Read data from row 6
+          const range = XLSX.utils.decode_range(ws['!ref']);
+          const startRow = 5; // Row 6 in Excel (0-based index 5)
+          const endRow = range.e.r;
+
+          sheetData = [];
+
+          for (let r = startRow; r <= endRow; r++) {
+            // Read from three columns:
+            // Column A (index 0): Barcode (الرمز الخطي)
+            // Column C (index 2): Product Name (الماده الاسم)
+            // Column D (index 3): Quantity (الكمية)
+            
+            const barcodeCell = ws[XLSX.utils.encode_cell({ r, c: 0 })];
+            const productNameCell = ws[XLSX.utils.encode_cell({ r, c: 2 })]; // Column C
+            const qtyCell = ws[XLSX.utils.encode_cell({ r, c: 3 })];
+
+            const barcode = barcodeCell ? String(barcodeCell.v).trim() : '';
+            const productName = productNameCell ? String(productNameCell.v).trim() : '';
+            const qty = qtyCell ? qtyCell.v : '';
+
+            if (barcode) {
+              sheetData.push({
+                'الرمز الخطي': barcode,
+                'الكمية': qty,
+                'الماده الاسم': productName,
+                'الرف': '', // Initially empty, will be set to shelf location or N/A
+                'الفعلي': '',
+                'الصلاحية': '',
+                'عربي': ''
+              });
+            }
+          }
+
+          showStatus(`Loaded ${sheetData.length} items from goods return file.`, 'success');
+
+          if (Object.keys(shelfMapping).length > 0) {
+            updateShelfLocations();
+          } else {
+            renderTable();
+          }
+
+        } catch(err) {
+          console.error('Failed to read Excel:', err);
+          showStatus('Failed to read Excel: ' + err.message, 'error');
+        }
+      };
+      reader.readAsArrayBuffer(f);
+    });
+
+    // Handle shelf file upload
+    shelfFileInput.addEventListener('change', (e) => {
+      const f = e.target.files[0];
+      if(!f) return;
+      
+      clearStatus();
+      readShelfFile(f);
+    });
+  </script>
+   <script>
+    // Wait 7 seconds, then hide the loader
+    setTimeout(() => {
+      const loader = document.getElementById("loader");
+      loader.classList.add("fade-out");          // smooth fade
+      setTimeout(() => loader.style.display = "none", 1000); // remove after fade
+      document.getElementById("content").style.display = "block";
+    }, 3000); // 3 seconds
+  </script>
+</body>
+</html>
