@@ -487,6 +487,7 @@
       <div class="action-buttons">
   <button class="btn btn-accent" onclick="printTable()">Print Table</button>
   <button class="btn btn-accent" onclick="copyBarcodes()">Copy Barcodes</button>
+        <button class="btn btn-accent" onclick="copyQuantities()">Copy Quantities</button>
       </div>
 
     <h3 id="tableTitle" class="notavailable" dir="rtl">عنوان الجدول</h3>
@@ -906,17 +907,17 @@
       document.getElementById("content").style.display = "block";
     }, 3000); // 3 seconds
 
-     function copyBarcodes() {
+// 📋 Copy all barcodes (after sorting)
+function copyBarcodes() {
   if (!sheetData || sheetData.length === 0) {
     alert("لا توجد بيانات في الجدول لنسخها.");
     return;
   }
 
-  // Get all barcodes from the sorted table data
   const sortedBarcodes = sheetData
     .map(row => row["الرمز الخطي"])
     .filter(bc => bc && bc.trim() !== "")
-    .join("\n"); // newline separated
+    .join("\n");
 
   if (sortedBarcodes === "") {
     alert("لم يتم العثور على أي رموز خطية.");
@@ -930,6 +931,31 @@
       alert("❌ فشل النسخ. حاول مرة أخرى.");
     });
 }
+
+// 📋 Copy all quantities (after sorting)
+function copyQuantities() {
+  if (!sheetData || sheetData.length === 0) {
+    alert("لا توجد بيانات في الجدول لنسخها.");
+    return;
+  }
+
+  const sortedQuantities = sheetData
+    .map(row => row["الكمية"])
+    .filter(qty => qty !== undefined && qty !== null && String(qty).trim() !== "")
+    .join("\n");
+
+  if (sortedQuantities === "") {
+    alert("لم يتم العثور على أي كميات.");
+    return;
+  }
+
+  navigator.clipboard.writeText(sortedQuantities)
+    .then(() => alert("✅ تم نسخ الكميات بالترتيب! يمكنك الآن لصقها في Excel (Ctrl + V)."))
+    .catch(err => {
+      console.error("Clipboard copy failed:", err);
+      alert("❌ فشل النسخ. حاول مرة أخرى.");
+    });
+     }
   </script>
 </body>
 </html>
