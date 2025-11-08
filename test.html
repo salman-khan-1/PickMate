@@ -789,8 +789,8 @@
         // Calculate total rows in this pair
         const pairRowCount = pair.reduce((total, group) => total + group.rows.length, 0);
         
-        // If pair has more than 43 rows, split it into multiple pages
-        const maxRowsPerPage = 43;
+        // If pair has more than 41 rows, split it into multiple pages
+        const maxRowsPerPage = 41;
         const pagesNeeded = Math.ceil(pairRowCount / maxRowsPerPage);
         
         for (let pageNum = 0; pageNum < pagesNeeded; pageNum++) {
