@@ -253,7 +253,7 @@
 
     /* Chart container */
     #workloadChartContainer {
-      height: 400px;
+      height: 500px;
       width: 100%;
     }
 
@@ -570,7 +570,7 @@
 
   <!-- Workload Chart Modal -->
   <div class="modal fade" id="workloadModal" tabindex="-1" aria-labelledby="workloadModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title" id="workloadModalLabel">تحميل العمل حسب الرفوف</h5>
@@ -658,7 +658,7 @@
       });
     }
 
-    // Function to show workload chart
+    // Function to show workload chart - CHANGED TO HORIZONTAL BAR CHART
     function showWorkloadChart() {
       if (sheetData.length === 0) {
         alert("لا توجد بيانات لعرض المخطط.");
@@ -707,7 +707,7 @@
         workloadChartInstance.destroy();
       }
 
-      // Create new chart
+      // Create new HORIZONTAL bar chart
       const ctx = document.getElementById('workloadChart').getContext('2d');
       workloadChartInstance = new Chart(ctx, {
         type: 'bar',
@@ -717,16 +717,21 @@
             label: 'الكمية الإجمالية',
             data: quantities,
             backgroundColor: [
-              'rgba(71, 192, 207, 0.7)',
-              'rgba(63, 94, 251, 0.7)',
-              'rgba(137, 207, 240, 0.7)',
-              'rgba(0, 119, 190, 0.7)',
-              'rgba(0, 150, 199, 0.7)',
-              'rgba(72, 209, 204, 0.7)',
-              'rgba(64, 224, 208, 0.7)',
-              'rgba(0, 206, 209, 0.7)',
-              'rgba(95, 158, 160, 0.7)',
-              'rgba(70, 130, 180, 0.7)'
+              'rgba(71, 192, 207, 0.8)',
+              'rgba(63, 94, 251, 0.8)',
+              'rgba(137, 207, 240, 0.8)',
+              'rgba(0, 119, 190, 0.8)',
+              'rgba(0, 150, 199, 0.8)',
+              'rgba(72, 209, 204, 0.8)',
+              'rgba(64, 224, 208, 0.8)',
+              'rgba(0, 206, 209, 0.8)',
+              'rgba(95, 158, 160, 0.8)',
+              'rgba(70, 130, 180, 0.8)',
+              'rgba(100, 149, 237, 0.8)',
+              'rgba(30, 144, 255, 0.8)',
+              'rgba(0, 191, 255, 0.8)',
+              'rgba(135, 206, 250, 0.8)',
+              'rgba(173, 216, 230, 0.8)'
             ],
             borderColor: [
               'rgba(71, 192, 207, 1)',
@@ -738,12 +743,20 @@
               'rgba(64, 224, 208, 1)',
               'rgba(0, 206, 209, 1)',
               'rgba(95, 158, 160, 1)',
-              'rgba(70, 130, 180, 1)'
+              'rgba(70, 130, 180, 1)',
+              'rgba(100, 149, 237, 1)',
+              'rgba(30, 144, 255, 1)',
+              'rgba(0, 191, 255, 1)',
+              'rgba(135, 206, 250, 1)',
+              'rgba(173, 216, 230, 1)'
             ],
-            borderWidth: 1
+            borderWidth: 1,
+            borderRadius: 4,
+            borderSkipped: false,
           }]
         },
         options: {
+          indexAxis: 'y', // This makes the bars horizontal
           responsive: true,
           maintainAspectRatio: false,
           plugins: {
@@ -760,16 +773,36 @@
             tooltip: {
               callbacks: {
                 label: function(context) {
-                  return `الكمية: ${context.parsed.y}`;
+                  return `الكمية: ${context.parsed.x}`;
                 }
               }
             }
           },
           scales: {
             x: {
+              beginAtZero: true,
+              ticks: {
+                color: '#e6eef8'
+              },
+              grid: {
+                color: 'rgba(255, 255, 255, 0.1)'
+              },
+              title: {
+                display: true,
+                text: 'الكمية الإجمالية',
+                color: '#e6eef8',
+                font: {
+                  size: 14,
+                  weight: 'bold'
+                }
+              }
+            },
+            y: {
               ticks: {
                 color: '#e6eef8',
-                maxRotation: 45
+                font: {
+                  size: 12
+                }
               },
               grid: {
                 color: 'rgba(255, 255, 255, 0.1)'
@@ -783,25 +816,11 @@
                   weight: 'bold'
                 }
               }
-            },
-            y: {
-              beginAtZero: true,
-              ticks: {
-                color: '#e6eef8'
-              },
-              grid: {
-                color: 'rgba(255, 255, 255, 0.1)'
-              },
-              title: {
-                display: true,
-                text: 'الكمية',
-                color: '#e6eef8',
-                font: {
-                  size: 14,
-                  weight: 'bold'
-                }
-              }
             }
+          },
+          animation: {
+            duration: 1000,
+            easing: 'easeOutQuart'
           }
         }
       });
