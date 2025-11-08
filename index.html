@@ -12,6 +12,9 @@
   <!-- SheetJS for Excel handling -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
   <style>
     :root{
       --bg-1: #071026;
@@ -216,6 +219,21 @@
       background: rgba(255,255,255,0.3);
     }
 
+    /* Modal tweaks & Chart size */
+    #workloadModal .modal-content {
+      background: linear-gradient(135deg, rgba(7,16,38,0.95), rgba(3,9,20,0.95));
+      border-radius: 12px;
+      color: #e6eef8;
+    }
+
+    #workloadModal .modal-body {
+      padding: 2rem;
+    }
+    #reportChart {
+      width: 100% !important;
+      height: 400px !important;
+    }
+
     /* Print Styles */
     @media print {
       body {
@@ -231,7 +249,8 @@
       .status-message,
       .action-buttons,
       .btn-accent,
-      .btn-print {
+      .btn-print,
+      #workloadModal {
         display: none !important;
       }
 
@@ -256,12 +275,13 @@
       }
 
       #tableTitle {
-        color: black !important;
+        /* color: black !important;
         background: none !important;
         -webkit-text-fill-color: black !important;
         margin-bottom: 10px !important;
         font-size: 16px !important;
-        padding: 0 !important;
+        padding: 0 !important; */
+        display: none;
       }
 
       .table-responsive {
@@ -278,18 +298,19 @@
         margin: 0 auto !important;
         font-size: 10px !important;
         page-break-inside: auto;
+        border: 1.5pt solid #000000 !important;
       }
 
       .table th, .table td {
         color: black !important;
-        border: 1px solid #000000 !important;
-        padding: 4px 6px !important;
+        border: 1.3pt solid #000000 !important;
+        padding: 3px 6px !important;
         page-break-inside: avoid;
         page-break-after: auto;
       }
 
       .table thead th {
-        background: #f8f9fa !important;
+        background: #d6dee6 !important;
         font-weight: 600 !important;
         page-break-after: avoid;
       }
@@ -322,7 +343,6 @@
         text-align: right !important;
         direction: rtl !important;
         white-space: nowrap !important;
-   
       }
 
       /* Print page container with proper page breaks and vertical centering */
@@ -352,14 +372,6 @@
         margin-bottom: 12px !important;
         width: 100%;
         page-break-after: avoid;
-      }
-
-      .page-info {
-        position: absolute;
-        top: 5mm;
-        right: 5mm;
-        font-size: 10px !important;
-        color: #666 !important;
       }
 
       /* Ensure tables break properly */
@@ -473,11 +485,11 @@
     <div class="glass file-upload-section">
       <div class="row">
         <div class="col-md-6 mb-3">
-          <label for="fileInput" class="form-label">Upload order Excel file (.xlsx)</label>
+          <label for="fileInput" class="form-label">رفع ملف الطلبات Excel (.xlsx)</label>
           <input id="fileInput" type="file" accept=".xlsx,.xls" class="form-control" />
         </div>
         <div class="col-md-6 mb-3">
-          <label for="shelfFileInput" class="form-label">Upload Shelf Location Excel file (.xlsx)</label>
+          <label for="shelfFileInput" class="form-label">رفع ملف مواقع الرفوف Excel (.xlsx)</label>
           <input id="shelfFileInput" type="file" accept=".xlsx,.xls" class="form-control" />
         </div>
       </div>
@@ -485,17 +497,33 @@
       <div id="statusMessage" class="status-message mt-3 p-3 d-none"></div>
       
       <div class="action-buttons">
-        <button class="btn btn-accent" onclick="printTable()">
-          Print Table
-        </button>
+        <button class="btn btn-accent" onclick="printTable()">طباعة الجدول</button>
+        <button class="btn btn-accent" onclick="copyBarcodes()">نسخ الأكواد</button>
+        <button class="btn btn-accent" onclick="copyQuantities()">نسخ الكميات</button>
+        <button class="btn btn-accent" id="workloadBtn">عرض تقرير عبء العمل</button>
       </div>
     </div>
 
-    <h3 id="tableTitle" class="notavailable" dir="rtl">عنوان الجدول</h3>
+    <h3 id="tableTitle" dir="rtl">عنوان الجدول</h3>
     
     <div class="glass">
       <div class="table-responsive" id="tableContainer">
         <!-- Tables will be dynamically created here with print-page containers -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Workload Modal (only chart) -->
+  <div class="modal fade" id="workloadModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header border-0">
+          <h5 class="modal-title" dir="rtl">تقرير عبء العمل - إجمالي الكميات حسب مجموعة الرفوف</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <canvas id="reportChart"></canvas>
+        </div>
       </div>
     </div>
   </div>
@@ -506,9 +534,13 @@
     const tableTitle = document.getElementById('tableTitle');
     const tableContainer = document.getElementById('tableContainer');
     const statusMessage = document.getElementById('statusMessage');
+    const workloadBtn = document.getElementById('workloadBtn');
+    const workloadModalEl = document.getElementById('workloadModal');
+    const workloadModal = new bootstrap.Modal(workloadModalEl, { backdrop: 'static' });
 
     let sheetData = [];
     let shelfMapping = {};
+    let reportChart = null;
 
     function showStatus(message, type = 'info') {
       statusMessage.textContent = message;
@@ -562,52 +594,41 @@
             }
           }
 
-          showStatus(`Shelf file loaded. Found ${validBarcodes} barcode mappings.`, 'success');
+          showStatus(`تم تحميل ملف الرفوف. تم إيجاد ${validBarcodes} خريطة رمزية.`, 'success');
 
           if (sheetData.length > 0) {
             updateShelfLocations();
           }
         } catch(err) {
           console.error('Failed to read shelf file:', err);
-          showStatus('Failed to read shelf file: ' + err.message, 'error');
+          showStatus('فشل في قراءة ملف الرفوف: ' + err.message, 'error');
         }
       };
       reader.readAsArrayBuffer(file);
     }
 
-    // Fixed sorting function for shelf locations - natural sort
+    // Natural sort helper
     function sortShelfLocations(a, b) {
       const shelfA = a['الرف'] || '';
       const shelfB = b['الرف'] || '';
 
-      // Handle N/A values - put them at the end
       if (shelfA === 'N/A' && shelfB === 'N/A') return 0;
       if (shelfA === 'N/A') return 1;
       if (shelfB === 'N/A') return -1;
 
-      // Natural sort comparison for shelf locations
       return naturalCompare(shelfA, shelfB);
     }
 
-    // Natural sort comparison function
     function naturalCompare(a, b) {
       const ax = [], bx = [];
-
-      // Split into segments (numbers and non-numbers)
-      a.replace(/(\d+)|(\D+)/g, function(_, $1, $2) {
-        ax.push([$1 || Infinity, $2 || ""]);
-      });
-      b.replace(/(\d+)|(\D+)/g, function(_, $1, $2) {
-        bx.push([$1 || Infinity, $2 || ""]);
-      });
-      
+      a.replace(/(\d+)|(\D+)/g, function(_, $1, $2) { ax.push([$1 || Infinity, $2 || ""]); });
+      b.replace(/(\d+)|(\D+)/g, function(_, $1, $2) { bx.push([$1 || Infinity, $2 || ""]); });
       while (ax.length && bx.length) {
         const an = ax.shift();
         const bn = bx.shift();
         const nn = (an[0] - bn[0]) || an[1].localeCompare(bn[1]);
         if (nn) return nn;
       }
-      
       return ax.length - bx.length;
     }
 
@@ -622,32 +643,30 @@
             row['الرف'] = shelfMapping[barcode];
             updatedCount++;
           } else {
-            // Set to "N/A" if barcode not found in shelf file
             row['الرف'] = 'N/A';
             notFoundCount++;
           }
         }
       });
       
-      // Sort the data by shelf location using natural sort
       sheetData.sort(sortShelfLocations);
-      
       renderTable();
-      showStatus(`Updated shelf locations for ${updatedCount} items. ${notFoundCount} items set to N/A. Sorted by shelf location.`, 'success');
+      showStatus(`تم تحديث مواقع الرفوف لـ ${updatedCount} عنصر. ${notFoundCount} عناصر تم تعيينها إلى N/A.`, 'success');
     }
 
+    // Main rendering function
     function renderTable(){
       tableContainer.innerHTML = '';
       
       if (sheetData.length === 0) {
         const emptyDiv = document.createElement('div');
         emptyDiv.className = 'text-center muted p-4';
-        emptyDiv.textContent = 'No data available';
+        emptyDiv.textContent = 'لا توجد بيانات';
         tableContainer.appendChild(emptyDiv);
         return;
       }
       
-      // First, identify all the groups and their first numbers
+      // Identify groups by first full number before dash
       const groups = [];
       let currentGroup = null;
       
@@ -663,90 +682,58 @@
         }
         
         if (currentGroup === null || firstNumber !== currentGroup.firstNumber) {
-          // Start a new group
-          if (currentGroup !== null) {
-            groups.push(currentGroup);
-          }
-          currentGroup = {
-            firstNumber: firstNumber,
-            rows: [row]
-          };
+          if (currentGroup !== null) groups.push(currentGroup);
+          currentGroup = { firstNumber: firstNumber, rows: [row] };
         } else {
-          // Add to current group
           currentGroup.rows.push(row);
         }
       });
-      
-      // Don't forget the last group
-      if (currentGroup !== null) {
-        groups.push(currentGroup);
-      }
-      
-      // Create a map of all existing first numbers for quick lookup
+      if (currentGroup !== null) groups.push(currentGroup);
+
+      // Build set of existing firstNumbers
       const existingNumbers = new Set();
-      groups.forEach(group => {
-        if (group.firstNumber !== null) {
-          existingNumbers.add(group.firstNumber);
-        }
-      });
-      
-      // Now group the groups into pairs for printing
+      groups.forEach(g => { if (g.firstNumber !== null) existingNumbers.add(g.firstNumber); });
+
+      // Group into pairs for printing
       let currentPair = [];
       const pairs = [];
-      
       groups.forEach((group, groupIndex) => {
         currentPair.push(group);
-        
-        // Check if we should break after this group
         if (group.firstNumber !== null && groupIndex < groups.length - 1) {
           const nextEven = group.firstNumber + (group.firstNumber % 2 === 0 ? 2 : 1);
-          
-          // If this is an even group, always break
-          // OR if this is an odd group and the next even number doesn't exist
           if (group.firstNumber % 2 === 0 || !existingNumbers.has(nextEven)) {
             pairs.push(currentPair);
             currentPair = [];
           }
         } else if (groupIndex === groups.length - 1) {
-          // Last group, add the current pair
           pairs.push(currentPair);
         }
       });
-      
-      // Now render all pairs with proper page breaks and vertical centering
+
+      // Render pages (pairs -> pages with maxRowsPerPage per page)
       let rowIndex = 0;
       let pageCounter = 1;
-      
+      const maxRowsPerPage = 41;
+
       pairs.forEach((pair, pairIndex) => {
-        // Calculate total rows in this pair
         const pairRowCount = pair.reduce((total, group) => total + group.rows.length, 0);
-        
-        // If pair has more than 43 rows, split it into multiple pages
-        const maxRowsPerPage = 43;
         const pagesNeeded = Math.ceil(pairRowCount / maxRowsPerPage);
-        
+
         for (let pageNum = 0; pageNum < pagesNeeded; pageNum++) {
           const startRow = pageNum * maxRowsPerPage;
           const endRow = Math.min(startRow + maxRowsPerPage, pairRowCount);
-          
-          // Create a print-page container for each page
+
+          // Page container
           const printPage = document.createElement('div');
           printPage.className = 'print-page';
-          
-          // Add page info
-          const pageInfo = document.createElement('div');
-          pageInfo.className = 'page-info';
-          pageInfo.textContent = `Page ${pageCounter}`;
-          printPage.appendChild(pageInfo);
-          pageCounter++;
-          
+
           // Add table title at the top of each print page
           const titleElement = document.createElement('h3');
           titleElement.className = 'print-table-title';
           titleElement.textContent = tableTitle.textContent;
           titleElement.dir = 'rtl';
           printPage.appendChild(titleElement);
-          
+
           // Create a table for this page
           const table = document.createElement('table');
           table.className = 'table table-bordered table-sm mb-0';
@@ -761,7 +748,7 @@
               <th>الكمية</th>
               <th>الفعلي</th>
               <th>الصلاحية</th>
-              <th> عربي</th>
+              <th>عربي</th>
               <th class='namelimit'>الماده الاسم</th>
             </tr>
           `;
@@ -810,6 +797,128 @@
           tableContainer.appendChild(printPage);
         }
       });
+
+      // After DOM pages are created, compute the report from pages
+      buildReportFromPages();
+    }
+
+    // Build the workload report by scanning the actual .print-page elements
+    function buildReportFromPages() {
+      const pages = Array.from(tableContainer.querySelectorAll('.print-page'));
+      const groups = {}; // { label -> { items, qty, barcodes:Set, pages:Set } }
+
+      pages.forEach((pageEl, pageIndex) => {
+        const rows = Array.from(pageEl.querySelectorAll('tbody tr'));
+        rows.forEach(row => {
+          const tds = row.querySelectorAll('td');
+          const barcode = tds[1] ? tds[1].textContent.trim() : '';
+          const shelfText = tds[2] ? tds[2].textContent.trim() : '';
+          const qtyRaw = tds[3] ? tds[3].textContent.trim() : '';
+          const qty = Number(qtyRaw === '' ? 0 : (isNaN(Number(qtyRaw)) ? 0 : Number(qtyRaw)));
+
+          let groupLabel = 'N/A';
+          const m = shelfText.match(/^(\d+)/);
+          if (m) {
+            const n = parseInt(m[1], 10);
+            if (!isNaN(n)) {
+              if (n % 2 === 0) groupLabel = `${n-1}-${n}`; else groupLabel = `${n}-${n+1}`;
+            }
+          }
+
+          if (!groups[groupLabel]) groups[groupLabel] = { items: 0, qty: 0, barcodes: new Set(), pages: new Set() };
+          groups[groupLabel].items++;
+          groups[groupLabel].qty += qty;
+          if (barcode) groups[groupLabel].barcodes.add(barcode);
+          groups[groupLabel].pages.add(pageIndex + 1);
+        });
+      });
+
+      // store for modal use
+      window._warehouseGroups = groups;
+    }
+
+    // Show modal report and draw chart - ONLY CHART (no table)
+    function showWorkloadModal() {
+      const groups = window._warehouseGroups || {};
+      const entries = Object.entries(groups).map(([label, d]) => ({
+        label,
+        items: d.items,
+        qty: d.qty,
+        barcodes: d.barcodes.size,
+        pages: Array.from(d.pages).sort((a,b)=>a-b)
+      }));
+
+      // sort by qty desc
+      entries.sort((a,b) => b.qty - a.qty);
+
+      // Chart - EXACT SAME AS IN YOUR CODE
+      const ctx = document.getElementById('reportChart').getContext('2d');
+      if (reportChart) reportChart.destroy();
+
+      const labels = entries.map(e => e.label);
+      const data = entries.map(e => e.qty);
+
+      // build gradient colors for bars
+      const gradients = [];
+      labels.forEach((_, i) => {
+        const g = ctx.createLinearGradient(0, 0, 0, 300);
+        const palette = [
+          ['#47C0CF', '#3F5EFB'],
+          ['#00c6ff','#0072ff'],
+          ['#43e97b','#38f9d7'],
+          ['#fa709a','#fee140'],
+          ['#a18cd1','#fbc2eb'],
+          ['#fddb92','#d1fdff']
+        ];
+        const p = palette[i % palette.length];
+        g.addColorStop(0, p[0]);
+        g.addColorStop(1, p[1]);
+        gradients.push(g);
+      });
+
+      reportChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'إجمالي الكمية',
+            data,
+            backgroundColor: gradients,
+            borderRadius: 8,
+            barPercentage: 0.8,
+            categoryPercentage: 0.8
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(ctx) {
+                  const idx = ctx.dataIndex;
+                  const label = labels[idx];
+                  const ent = entries[idx];
+                  return ` ${label}: ${ent.qty} (عناصر: ${ent.items}, أكواد: ${ent.barcodes})`;
+                }
+              }
+            },
+            title: {
+              display: true,
+              text: 'إجمالي الكمية حسب مجموعة الأرفف',
+              color: '#ffffff',
+              font: { size: 14 }
+            }
+          },
+          scales: {
+            x: { ticks: { color: '#e6eef8' }, grid: { display: false } },
+            y: { ticks: { color: '#e6eef8' }, grid: { color: 'rgba(255,255,255,0.06)' }, beginAtZero: true }
+          }
+        }
+      });
+
+      workloadModal.show();
     }
 
     // Handle main file upload
@@ -848,11 +957,6 @@
           sheetData = [];
 
           for (let r = startRow; r <= endRow; r++) {
-            // Read from three columns:
-            // Column A (index 0): Barcode (الرمز الخطي)
-            // Column C (index 2): Product Name (الماده الاسم)
-            // Column D (index 3): Quantity (الكمية)
-            
             const barcodeCell = ws[XLSX.utils.encode_cell({ r, c: 0 })];
             const productNameCell = ws[XLSX.utils.encode_cell({ r, c: 2 })]; // Column C
             const qtyCell = ws[XLSX.utils.encode_cell({ r, c: 3 })];
@@ -866,7 +970,7 @@
                 'الرمز الخطي': barcode,
                 'الكمية': qty,
                 'الماده الاسم': productName,
-                'الرف': '', // Initially empty, will be set to shelf location or N/A
+                'الرف': '', // Initially empty
                 'الفعلي': '',
                 'الصلاحية': '',
                 'عربي': ''
@@ -874,7 +978,7 @@
             }
           }
 
-          showStatus(`Loaded ${sheetData.length} items from goods return file.`, 'success');
+          showStatus(`تم تحميل ${sheetData.length} عنصر من ملف المرتجعات.`, 'success');
 
           if (Object.keys(shelfMapping).length > 0) {
             updateShelfLocations();
@@ -884,7 +988,7 @@
 
         } catch(err) {
           console.error('Failed to read Excel:', err);
-          showStatus('Failed to read Excel: ' + err.message, 'error');
+          showStatus('فشل في قراءة ملف Excel: ' + err.message, 'error');
         }
       };
       reader.readAsArrayBuffer(f);
@@ -898,15 +1002,40 @@
       clearStatus();
       readShelfFile(f);
     });
-  </script>
-   <script>
-    // Wait 7 seconds, then hide the loader
+
+    // Copy functions
+    function copyBarcodes() {
+      if (!sheetData || sheetData.length === 0) {
+        alert("لا توجد بيانات في الجدول لنسخها.");
+        return;
+      }
+      const sortedBarcodes = sheetData.map(row => row["الرمز الخطي"]).filter(bc => bc && bc.trim() !== "").join("\n");
+      if (sortedBarcodes === "") { alert("لم يتم العثور على أي رموز خطية."); return; }
+      navigator.clipboard.writeText(sortedBarcodes).then(() => alert("✅ تم نسخ الرموز الخطية بالترتيب! يمكنك الآن لصقها في Excel (Ctrl + V).")).catch(err => { console.error("Clipboard copy failed:", err); alert("❌ فشل النسخ. حاول مرة أخرى."); });
+    }
+
+    function copyQuantities() {
+      if (!sheetData || sheetData.length === 0) {
+        alert("لا توجد بيانات في الجدول لنسخها.");
+        return;
+      }
+      const sortedQuantities = sheetData.map(row => row["الكمية"]).filter(qty => qty !== undefined && qty !== null && String(qty).trim() !== "").join("\n");
+      if (sortedQuantities === "") { alert("لم يتم العثور على أي كميات."); return; }
+      navigator.clipboard.writeText(sortedQuantities).then(() => alert("✅ تم نسخ الكميات بالترتيب! يمكنك الآن لصقها في Excel (Ctrl + V).")).catch(err => { console.error("Clipboard copy failed:", err); alert("❌ فشل النسخ. حاول مرة أخرى."); });
+    }
+
+    // Build report on-demand when user clicks
+    workloadBtn.addEventListener('click', () => {
+      // Ensure pages are up-to-date (renderTable populates window._warehouseGroups)
+      buildReportFromPages();
+      showWorkloadModal();
+    });
+
+    // Hide loader after short delay
     setTimeout(() => {
       const loader = document.getElementById("loader");
-      loader.classList.add("fade-out");          // smooth fade
-      setTimeout(() => loader.style.display = "none", 1000); // remove after fade
-      document.getElementById("content").style.display = "block";
-    }, 3000); // 3 seconds
+      if (loader) { loader.classList.add("fade-out"); setTimeout(() => loader.style.display = "none", 800); }
+    }, 800);
   </script>
 </body>
 </html>
