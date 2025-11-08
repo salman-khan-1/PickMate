@@ -13,6 +13,7 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <style>
+    /* Your existing CSS styles remain the same */
     :root{
       --bg-1: #071026;
       --bg-2: #071827;
@@ -73,6 +74,22 @@
       opacity: 0.9;
       transform: translateY(-1px);
       box-shadow: 0 4px 15px rgba(107, 114, 128, 0.3);
+    }
+    
+    /* New copy button style */
+    .btn-copy {
+      background: linear-gradient(90deg, #10b981, #059669);
+      border: none;
+      color: white;
+      font-weight: 500;
+      padding: 10px 20px;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+    }
+    .btn-copy:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
     }
 
     .form-control, .form-select {
@@ -231,7 +248,8 @@
       .status-message,
       .action-buttons,
       .btn-accent,
-      .btn-print {
+      .btn-print,
+      .btn-copy {
         display: none !important;
       }
 
@@ -485,10 +503,17 @@
       <div id="statusMessage" class="status-message mt-3 p-3 d-none"></div>
       
       <div class="action-buttons">
-  <button class="btn btn-accent" onclick="printTable()">Print Table</button>
-  <button class="btn btn-accent" onclick="copyBarcodes()">Copy Barcodes</button>
-        <button class="btn btn-accent" onclick="copyQuantities()">Copy Quantities</button>
+        <button class="btn btn-copy" onclick="copyBarcodes()">
+          Copy Barcodes
+        </button>
+        <button class="btn btn-copy" onclick="copyQuantities()">
+          Copy Quantities
+        </button>
+        <button class="btn btn-print" onclick="printTable()">
+          Print Table
+        </button>
       </div>
+    </div>
 
     <h3 id="tableTitle" class="notavailable" dir="rtl">عنوان الجدول</h3>
     
@@ -521,6 +546,50 @@
 
     function printTable() {
       window.print();
+    }
+
+    // New function to copy all barcodes
+    function copyBarcodes() {
+      if (sheetData.length === 0) {
+        showStatus('No data available to copy.', 'error');
+        return;
+      }
+
+      // Extract all barcodes
+      const barcodes = sheetData.map(row => row['الرمز الخطي'] || '');
+      
+      // Create a string with each barcode on a new line
+      const barcodesText = barcodes.join('\n');
+      
+      // Copy to clipboard
+      navigator.clipboard.writeText(barcodesText).then(() => {
+        showStatus(`Copied ${barcodes.length} barcodes to clipboard. You can paste them directly into Excel.`, 'success');
+      }).catch(err => {
+        console.error('Failed to copy barcodes: ', err);
+        showStatus('Failed to copy barcodes to clipboard.', 'error');
+      });
+    }
+
+    // New function to copy all quantities
+    function copyQuantities() {
+      if (sheetData.length === 0) {
+        showStatus('No data available to copy.', 'error');
+        return;
+      }
+
+      // Extract all quantities
+      const quantities = sheetData.map(row => row['الكمية'] || '');
+      
+      // Create a string with each quantity on a new line
+      const quantitiesText = quantities.join('\n');
+      
+      // Copy to clipboard
+      navigator.clipboard.writeText(quantitiesText).then(() => {
+        showStatus(`Copied ${quantities.length} quantities to clipboard. You can paste them directly into Excel.`, 'success');
+      }).catch(err => {
+        console.error('Failed to copy quantities: ', err);
+        showStatus('Failed to copy quantities to clipboard.', 'error');
+      });
     }
 
     function readShelfFile(file) {
@@ -906,56 +975,6 @@
       setTimeout(() => loader.style.display = "none", 1000); // remove after fade
       document.getElementById("content").style.display = "block";
     }, 3000); // 3 seconds
-
-// 📋 Copy all barcodes (after sorting)
-function copyBarcodes() {
-  if (!sheetData || sheetData.length === 0) {
-    alert("لا توجد بيانات في الجدول لنسخها.");
-    return;
-  }
-
-  const sortedBarcodes = sheetData
-    .map(row => row["الرمز الخطي"])
-    .filter(bc => bc && bc.trim() !== "")
-    .join("\n");
-
-  if (sortedBarcodes === "") {
-    alert("لم يتم العثور على أي رموز خطية.");
-    return;
-  }
-
-  navigator.clipboard.writeText(sortedBarcodes)
-    .then(() => alert("✅ تم نسخ الرموز الخطية بالترتيب! يمكنك الآن لصقها في Excel (Ctrl + V)."))
-    .catch(err => {
-      console.error("Clipboard copy failed:", err);
-      alert("❌ فشل النسخ. حاول مرة أخرى.");
-    });
-}
-
-// 📋 Copy all quantities (after sorting)
-function copyQuantities() {
-  if (!sheetData || sheetData.length === 0) {
-    alert("لا توجد بيانات في الجدول لنسخها.");
-    return;
-  }
-
-  const sortedQuantities = sheetData
-    .map(row => row["الكمية"])
-    .filter(qty => qty !== undefined && qty !== null && String(qty).trim() !== "")
-    .join("\n");
-
-  if (sortedQuantities === "") {
-    alert("لم يتم العثور على أي كميات.");
-    return;
-  }
-
-  navigator.clipboard.writeText(sortedQuantities)
-    .then(() => alert("✅ تم نسخ الكميات بالترتيب! يمكنك الآن لصقها في Excel (Ctrl + V)."))
-    .catch(err => {
-      console.error("Clipboard copy failed:", err);
-      alert("❌ فشل النسخ. حاول مرة أخرى.");
-    });
-     }
   </script>
 </body>
 </html>
